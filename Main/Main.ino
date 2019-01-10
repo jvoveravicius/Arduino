@@ -1,4 +1,5 @@
 #define WATERMOTOR 11
+#define SUN 8
 #define ALERT0 2
 #define AlERT1 3
 #define AlERT2 4
@@ -6,11 +7,10 @@
 #define HYGROMETER A0
 
 
-
 boolean SystemCheck = false;
+boolean TetMode = false;
 int MaxWater = 90;
-int MediumWater = 70;
-int MinWater = 30;
+int MinWater = 60;
 int CheckTime = 1000;
 
 
@@ -18,7 +18,7 @@ void setup() {
     
   pinMode(HYGROMETER, INPUT);
   pinMode(WATERMOTOR, OUTPUT);
-  
+  pinMode(SUN, OUTPUT);
   pinMode(ALERT0, OUTPUT);
   pinMode(AlERT1, OUTPUT);
   pinMode(AlERT2, OUTPUT);
@@ -90,7 +90,7 @@ class Hygro {
 
   private:
     Info inf;
-    short MaxVal = 340;
+    short MaxVal = 100;
     short MinValue = 1023;
     short MaxPerc = 100;
     short output_value ;
@@ -118,7 +118,7 @@ class WaterPomp {
     Hygro dry;
     Info info;
     int CheckTimes = 10;
-    int DelayCheckTimes = 1000;
+    int DelayCheckTimes = 9000;
     int RunningMotorTime = 5000;
     
   public:
@@ -257,12 +257,13 @@ void SelfCheckAnalog(){
 
 }
 
-
-
+int SunTime = 0;
+int DelayTime = 0;
+boolean EnableSun = false;
 
 void loop() {
 
-
+  
     if (SystemCheck){
          SelfCheckDigit();
          SelfCheckAnalog();
@@ -275,28 +276,69 @@ void loop() {
     int HygroVal = hygro.ret_values(CheckTime);
     Serial.println(HygroVal);
 
-    if (HygroVal<=0){
-      info.HardwareWarning();
-      goto Stop;
-     }
 
-    if (HygroVal>MaxWater){
 
-        info.Notification(AlERT2, 2);
-     }
-     else if (HygroVal>=MediumWater){
+    if (!TetMode){
+
       
-        info.Notification(AlERT1, 2);
-     }
-     else if (HygroVal<=MinWater){
-       pump.DuneMode();
-       info.Notification(ALERT0, 2);
+      if (HygroVal<=0){
+        info.HardwareWarning();
+        goto Stop;
+       }
        
-     }
+  
+      if (HygroVal>=MaxWater){ //nuo 90
+  
+          info.Notification(AlERT2, 2);
+       }
+       else if (HygroVal>MinWater){ //nuo 89 iki 31
+        
+          info.Notification(AlERT1, 2);
+       }
+       else if (HygroVal<=MinWater){ //maziau arba lygu 30
+         pump.DuneMode();
+         info.Notification(ALERT0, 2);
+         
+       }
+  
+      
+      Serial.println(HygroVal);
 
+    }
     
-    Serial.println(HygroVal);
+  
+    
+    if (SunTime>=1800)
+    {
 
-    
+      Serial.println("OFFTime: ");
+      Serial.println(DelayTime);
+      DelayTime++;
+
+
+      if (!EnableSun)
+      {
+        digitalWrite(SUN, HIGH);
+        EnableSun = true;
+      }
+      else if (DelayTime>=1800)
+      {
+        digitalWrite(SUN, LOW);
+        SunTime = 0;
+        DelayTime = 0;
+        EnableSun = false;
+      }
+
+      
+    }
+    else
+    {
+      
+        SunTime++;
+        Serial.println("ONTime: ");
+        Serial.println(SunTime);
+    }
+
+
   
  }
